@@ -27,7 +27,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.0,<2.5"
           pip install "optimum[exporters]<2" "transformers<5" sentence-transformers onnx onnxruntime huggingface_hub
           python -c "import optimum.exporters.onnx; print('optimum.exporters.onnx OK')"
 
