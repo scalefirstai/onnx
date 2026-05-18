@@ -27,7 +27,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install "optimum[exporters]" onnx onnxruntime huggingface_hub
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install "optimum[exporters]" transformers sentence-transformers onnx onnxruntime huggingface_hub
+          python -c "import optimum.exporters.onnx; print('optimum.exporters.onnx OK')"
 
       - name: Export and stage release
         run: |
