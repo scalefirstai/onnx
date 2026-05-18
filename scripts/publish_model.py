@@ -20,7 +20,6 @@ import argparse
 import hashlib
 import json
 import shutil
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,21 +33,51 @@ def sha256_file(path: Path, chunk: int = 1 << 20) -> str:
     return h.hexdigest()
 
 
-def run(cmd: list[str]) -> None:
-    print(f"  $ {' '.join(cmd)}")
-    subprocess.run(cmd, check=True)
+def export_onnx(model_id: str, work_dir: Path, opset: int = 17) -> None:
+    """Export a transformers feature-extraction model to ONNX via torch.onnx.export.
 
+    Bypasses the sentence-transformers wrapper to avoid version-compat issues with
+    optimum's high-level exporter. The sentence-transformers/all-MiniLM-L6-v2 repo
+    is a standard BERT-family encoder once you go through AutoModel.
+    """
+    import torch
+    from transformers import AutoModel, AutoTokenizer, AutoConfig
 
-def export_onnx(model_id: str, work_dir: Path) -> None:
-    """Use optimum-cli to export to ONNX. Produces model.onnx + tokenizer files."""
     work_dir.mkdir(parents=True, exist_ok=True)
-    run([
-        sys.executable, "-m", "optimum.exporters.onnx",
-        "--model", model_id,
-        "--task", "feature-extraction",
-        "--opset", "17",
-        str(work_dir),
-    ])
+
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    config = AutoConfig.from_pretrained(model_id)
+    model = AutoModel.from_pretrained(model_id, config=config)
+    model.eval()
+
+    tokenizer.save_pretrained(work_dir)
+    config.save_pretrained(work_dir)
+
+    enc = tokenizer("hello world", return_tensors="pt", padding="max_length",
+                    truncation=True, max_length=16)
+    input_ids = enc["input_ids"]
+    attention_mask = enc["attention_mask"]
+    token_type_ids = enc.get("token_type_ids", torch.zeros_like(input_ids))
+
+    dynamic_axes = {
+        "input_ids": {0: "batch", 1: "sequence"},
+        "attention_mask": {0: "batch", 1: "sequence"},
+        "token_type_ids": {0: "batch", 1: "sequence"},
+        "last_hidden_state": {0: "batch", 1: "sequence"},
+    }
+
+    onnx_path = work_dir / "model.onnx"
+    with torch.no_grad():
+        torch.onnx.export(
+            model,
+            (input_ids, attention_mask, token_type_ids),
+            str(onnx_path),
+            input_names=["input_ids", "attention_mask", "token_type_ids"],
+            output_names=["last_hidden_state"],
+            opset_version=opset,
+            dynamic_axes=dynamic_axes,
+            do_constant_folding=True,
+        )
 
 
 def quantize_onnx(src: Path, dst: Path) -> None:
