@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+release/
+.cache/
+*.onnx
+!scalefirst_onnx/**/*.py

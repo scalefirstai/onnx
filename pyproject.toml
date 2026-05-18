@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scalefirst-onnx"
+version = "0.1.0"
+description = "Loader for ONNX models hosted at github.com/scalefirstai/onnx"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "ScaleFirst" }]
+dependencies = [
+    "onnxruntime>=1.16",
+    "tokenizers>=0.15",
+    "numpy>=1.24",
+]
+
+[project.urls]
+Homepage = "https://github.com/scalefirstai/onnx"
+
+[tool.setuptools.packages.find]
+include = ["scalefirst_onnx*"]

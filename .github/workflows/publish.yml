@@ -1,0 +1,54 @@
+name: Publish ONNX model release
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: 'HF model id (e.g. sentence-transformers/all-MiniLM-L6-v2)'
+        required: true
+        default: 'sentence-transformers/all-MiniLM-L6-v2'
+      version:
+        description: 'Release version (e.g. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install "optimum[exporters]" onnx onnxruntime huggingface_hub
+
+      - name: Export and stage release
+        run: |
+          python scripts/publish_model.py \
+            --model "${{ inputs.model }}" \
+            --version "${{ inputs.version }}" \
+            --output-dir ./release
+
+      - name: Resolve short name and tag
+        id: meta
+        run: |
+          SHORT_NAME=$(echo "${{ inputs.model }}" | awk -F/ '{print $NF}')
+          echo "short_name=$SHORT_NAME" >> $GITHUB_OUTPUT
+          echo "tag=${SHORT_NAME}-${{ inputs.version }}" >> $GITHUB_OUTPUT
+          echo "release_dir=./release/${SHORT_NAME}-${{ inputs.version }}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.meta.outputs.tag }}" \
+            --title "${{ steps.meta.outputs.short_name }} ${{ inputs.version }}" \
+            --notes "ONNX export of \`${{ inputs.model }}\`. See manifest.json for SHA-256 checksums and SOURCE.md for upstream provenance." \
+            "${{ steps.meta.outputs.release_dir }}"/*
