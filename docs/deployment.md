@@ -56,6 +56,57 @@ The loader will fetch from `${SCALEFIRST_ONNX_MIRROR}/${TAG}/${FILENAME}` instea
 of GitHub. Checksum verification still runs against the bundled manifest, so a
 corrupted or tampered mirror copy will fail loudly.
 
+## PyPI-only environments (no source installs)
+
+In environments where only PyPI-published packages may be installed — and
+`scalefirst-onnx` itself isn't on PyPI — you don't need this package at runtime.
+The release assets are static files; the loader is convenience, not protocol.
+
+Once the tag is mirrored to your internal store, application code only needs
+`onnxruntime`, `tokenizers`, and `numpy` (all on PyPI):
+
+```python
+import hashlib, json
+from pathlib import Path
+import numpy as np
+import onnxruntime as ort
+from tokenizers import Tokenizer
+
+MODEL_DIR = Path("/opt/models/all-MiniLM-L6-v2")  # populated from your S3 mirror
+
+# Verify checksums against the bundled manifest before trusting the files.
+manifest = json.loads((MODEL_DIR / "manifest.json").read_text())
+for f in manifest["files"]:
+    got = hashlib.sha256((MODEL_DIR / f["name"]).read_bytes()).hexdigest()
+    assert got == f["sha256"], f"sha256 mismatch on {f['name']}"
+
+sess = ort.InferenceSession(str(MODEL_DIR / "model.quant.onnx"),
+                            providers=["CPUExecutionProvider"])
+tok = Tokenizer.from_file(str(MODEL_DIR / "tokenizer.json"))
+tok.enable_padding(); tok.enable_truncation(max_length=256)
+
+
+def embed(texts: list[str]) -> np.ndarray:
+    encs = tok.encode_batch(texts)
+    ids  = np.array([e.ids            for e in encs], dtype=np.int64)
+    mask = np.array([e.attention_mask for e in encs], dtype=np.int64)
+    last_hidden = sess.run(None, {
+        "input_ids": ids,
+        "attention_mask": mask,
+        "token_type_ids": np.zeros_like(ids),
+    })[0]
+    # mean-pool weighted by attention mask, then L2-normalize
+    m = mask[..., None].astype(np.float32)
+    pooled = (last_hidden * m).sum(1) / m.sum(1).clip(min=1e-9)
+    return pooled / np.linalg.norm(pooled, axis=1, keepdims=True).clip(min=1e-9)
+```
+
+If you prefer the `load_model(...)` ergonomics without installing this package,
+vendor `scalefirst_onnx/__init__.py` into your codebase as a single file —
+its only runtime deps are `onnxruntime`, `tokenizers`, and `numpy`, all on PyPI.
+Set `SCALEFIRST_ONNX_MIRROR` to your S3 base URL and it will fetch + verify
+exactly as the installed package would.
+
 ## Container builds
 
 For containerized services, bake the model into the image at build time:
