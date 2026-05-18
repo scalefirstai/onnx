@@ -26,9 +26,9 @@ DEFAULT_CACHE = Path(os.environ.get(
     Path.home() / ".cache" / "scalefirst" / "onnx",
 ))
 
-# Internal mirror override — set this in BNY environments to point at
-# Artifactory / internal S3 instead of GitHub.
-MIRROR_BASE = os.environ.get("SCALEFIRST_ONNX_MIRROR")  # e.g. https://artifactory.bny.example/onnx
+# Internal mirror override — set this in regulated/air-gapped environments to
+# point at Artifactory / internal S3 instead of GitHub.
+MIRROR_BASE = os.environ.get("SCALEFIRST_ONNX_MIRROR")  # e.g. https://artifactory.example.com/onnx
 
 
 # Registry of supported models. Versions are pinned here, not resolved dynamically,

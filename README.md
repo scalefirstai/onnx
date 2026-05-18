@@ -42,7 +42,7 @@ LICENSE                 # upstream license copy
 SOURCE.md               # upstream commit hash + provenance
 ```
 
-## For BNY / regulated environments
+## For regulated / corporate environments
 
 Recommended deployment pattern:
 

@@ -39,7 +39,7 @@ for f in m['files']:
 Then upload `mirror/${TAG}/` to your internal store:
 
 - **Artifactory generic repo**: `jfrog rt u "mirror/${TAG}/*" generic-local/onnx/${TAG}/`
-- **S3 bucket**: `aws s3 sync mirror/${TAG}/ s3://bny-internal-models/onnx/${TAG}/`
+- **S3 bucket**: `aws s3 sync mirror/${TAG}/ s3://internal-models/onnx/${TAG}/`
 - **Nexus raw repo**: `curl --upload-file` per file
 
 ### Application configuration
@@ -47,9 +47,9 @@ Then upload `mirror/${TAG}/` to your internal store:
 Set the mirror base in your runtime environment:
 
 ```bash
-export SCALEFIRST_ONNX_MIRROR="https://artifactory.bny.example/generic-local/onnx"
+export SCALEFIRST_ONNX_MIRROR="https://artifactory.example.com/generic-local/onnx"
 # or
-export SCALEFIRST_ONNX_MIRROR="https://bny-internal-models.s3.amazonaws.com/onnx"
+export SCALEFIRST_ONNX_MIRROR="https://internal-models.s3.amazonaws.com/onnx"
 ```
 
 The loader will fetch from `${SCALEFIRST_ONNX_MIRROR}/${TAG}/${FILENAME}` instead
